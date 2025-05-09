@@ -15,7 +15,9 @@ import QueryLiteSQL.Types.Env (Env(..))
 import QueryLiteSQL.Database.Schema (saveQuery, getQueryHistory)
 import Database.SQLite.Simple (Connection)
 
-routes :: Scotty.ScottyT Text (ReaderT Env IO) ()
+type AppM = ReaderT Env IO
+
+routes :: Scotty.ScottyT Text AppM ()
 routes = do
     -- Serve static files
     Scotty.middleware $ Static.staticPolicy (Static.noDots >-> Static.addBase "static")
