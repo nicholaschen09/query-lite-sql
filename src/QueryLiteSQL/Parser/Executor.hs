@@ -3,13 +3,15 @@
 
 module QueryLiteSQL.Parser.Executor where
 
-import Data.Aeson (Value(..), KeyMap)
-import Data.Aeson.KeyMap (lookup, filterWithKey)
+import Data.Aeson (Value(..))
+import Data.Aeson.KeyMap (KeyMap)
+import qualified Data.Aeson.KeyMap as KM
 import Data.Text (Text)
 import Data.Vector (Vector, (!), length)
 import qualified Data.Vector as V
 import Data.List (elem)
 import QueryLiteSQL.Parser.SQL (SQLQuery(..), WhereClause(..), Condition(..), Op(..))
+import Data.Aeson.Key (fromText, toText)
 
 type QueryResult = Either String [Value]
 
@@ -39,11 +41,13 @@ evaluateCondition (Or c1 c2) obj = do
     b1 <- evaluateCondition c1 obj
     b2 <- evaluateCondition c2 obj
     return $ b1 || b2
-evaluateCondition (BinaryOp col op val) obj = do
-    colVal <- case lookup col obj of
-        Just v -> Right v
-        Nothing -> Left $ "Column not found: " ++ show col
-    compareValues op colVal val
+evaluateCondition (BinaryOp col op val) obj = case obj of
+    Object objMap -> do
+        colVal <- case KM.lookup (fromText col) objMap of
+            Just v -> Right v
+            Nothing -> Left $ "Column not found: " ++ show col
+        compareValues op colVal val
+    _ -> Left "Expected object value"
 evaluateCondition (Parens c) obj = evaluateCondition c obj
 
 compareValues :: Op -> Value -> Value -> Either String Bool
@@ -70,9 +74,9 @@ selectColumns query data_ = do
     return selected
 
 selectRow :: [Text] -> Value -> Either String Value
-selectRow columns (Object obj) = do
-    let selected = filterWithKey (\k _ -> k `elem` columns) obj
-    if null selected
+selectRow columns (Object objMap) = do
+    let selected = KM.filterWithKey (\k _ -> toText k `elem` columns) objMap
+    if KM.null selected
         then Left "No matching columns found"
         else return $ Object selected
 selectRow _ _ = Left "Expected object value"

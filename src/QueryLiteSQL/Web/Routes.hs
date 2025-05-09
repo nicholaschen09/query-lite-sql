@@ -1,44 +1,46 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module QueryLiteSQL.Web.Routes where
 
 import Web.Scotty.Trans
-import Control.Monad.IO.Class (liftIO)
-import Control.Monad.Reader (ask)
-import Data.Aeson (Value, encode, object, (.=))
 import Data.Text.Lazy (Text)
-import Data.Text.Lazy.Encoding (decodeUtf8)
-import Data.ByteString.Lazy (toStrict)
-import Data.Time (getCurrentTime)
-
-import QueryLiteSQL.Types.Env (Env(..))
+import Data.Aeson (Value(..))
+import Control.Monad.Reader (ReaderT, ask)
+import Control.Monad.IO.Class (liftIO)
 import QueryLiteSQL.Parser.SQL (parseSQL)
 import QueryLiteSQL.Parser.Executor (executeQuery)
+import QueryLiteSQL.Types.Env (Env(..))
 import QueryLiteSQL.Database.Schema (saveQuery, getQueryHistory)
+import Database.SQLite.Simple (Connection)
 
 routes :: ScottyT Text (ReaderT Env IO) ()
 routes = do
     -- Serve static files
-    get "/" $ file "static/index.html"
-    get "/app.js" $ file "static/app.js"
-    get "/app.css" $ file "static/app.css"
+    middleware $ staticPolicy (noDots >-> addBase "static")
 
     -- API endpoints
-    post "/api/query" $ do
-        query <- param "query"
-        env <- ask
-        
+    get "/api/query" $ do
+        query <- param "q"
         case parseSQL query of
             Left err -> json $ object ["error" .= err]
             Right sqlQuery -> do
-                case executeQuery (jsonData env) sqlQuery of
+                env <- lift ask
+                case executeQuery sqlQuery (jsonData env) of
                     Left err -> json $ object ["error" .= err]
                     Right result -> do
-                        liftIO $ saveQuery (dbConnection env) query (decodeUtf8 $ toStrict $ encode result)
-                        json result
+                        conn <- liftIO $ connection env
+                        liftIO $ saveQuery conn query (show result)
+                        json $ object ["result" .= result]
 
     get "/api/history" $ do
-        env <- ask
-        history <- liftIO $ getQueryHistory (dbConnection env)
-        json history 
+        env <- lift ask
+        conn <- liftIO $ connection env
+        history <- liftIO $ getQueryHistory conn
+        json history
+
+    -- Frontend routes
+    get "/" $ file "static/index.html"
+    get "/:file" $ do
+        file <- param "file"
+        file $ "static/" ++ file 
