@@ -13,7 +13,9 @@ import Data.Aeson (Value, encode)
 import Data.ByteString.Lazy (toStrict)
 import Data.UUID (UUID)
 import Data.UUID.V4 (nextRandom)
-import Data.UUID.ToString (toString)
+import Data.Text.Encoding (encodeUtf8)
+import Data.ByteString (ByteString)
+import Data.Text (pack)
 
 data QueryHistory = QueryHistory
     { queryId :: Text
@@ -40,7 +42,7 @@ saveQuery :: Connection -> Text -> Text -> IO ()
 saveQuery conn queryText queryResult = do
     now <- getCurrentTime
     uuid <- nextRandom
-    let queryId = toString uuid
+    let queryId = pack $ show uuid
     execute conn "INSERT INTO query_history (id, query_text, query_result, query_time) VALUES (?, ?, ?, ?)"
         (queryId, queryText, queryResult, now)
 

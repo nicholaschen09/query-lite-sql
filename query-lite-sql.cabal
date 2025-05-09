@@ -31,6 +31,8 @@ executable query-lite-sql-exe
                   , time
                   , uuid
                   , uuid-types
+                  , vector
+                  , unordered-containers
   hs-source-dirs:   app, src
   default-language: Haskell2010
   ghc-options:      -threaded -rtsopts -with-rtsopts=-N 

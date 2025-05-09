@@ -120,6 +120,16 @@
   (major1) == 1 && (major2) <  14 || \
   (major1) == 1 && (major2) == 14 && (minor) <= 0)
 #endif /* MIN_VERSION_time */
+/* package unordered-containers-0.2.20 */
+#ifndef VERSION_unordered_containers
+#define VERSION_unordered_containers "0.2.20"
+#endif /* VERSION_unordered_containers */
+#ifndef MIN_VERSION_unordered_containers
+#define MIN_VERSION_unordered_containers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  2 || \
+  (major1) == 0 && (major2) == 2 && (minor) <= 20)
+#endif /* MIN_VERSION_unordered_containers */
 /* package uuid-1.3.16 */
 #ifndef VERSION_uuid
 #define VERSION_uuid "1.3.16"
@@ -140,6 +150,16 @@
   (major1) == 1 && (major2) <  0 || \
   (major1) == 1 && (major2) == 0 && (minor) <= 6)
 #endif /* MIN_VERSION_uuid_types */
+/* package vector-0.13.2.0 */
+#ifndef VERSION_vector
+#define VERSION_vector "0.13.2.0"
+#endif /* VERSION_vector */
+#ifndef MIN_VERSION_vector
+#define MIN_VERSION_vector(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  13 || \
+  (major1) == 0 && (major2) == 13 && (minor) <= 2)
+#endif /* MIN_VERSION_vector */
 /* package wai-3.2.4 */
 #ifndef VERSION_wai
 #define VERSION_wai "3.2.4"

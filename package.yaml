@@ -17,6 +17,7 @@ dependencies:
   - time
   - uuid
   - uuid-types
+  - uuid-aeson
 
 executables:
   query-lite-sql-exe:

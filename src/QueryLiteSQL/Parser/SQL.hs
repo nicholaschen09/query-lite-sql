@@ -5,9 +5,9 @@ module QueryLiteSQL.Parser.SQL where
 
 import Data.Attoparsec.Text as A
 import Data.Text (Text)
-import Data.Aeson (Value)
+import Data.Aeson (Value(..))
 import GHC.Generics (Generic)
-import Control.Applicative ((<|>), many)
+import Control.Applicative ((<|>), many, optional)
 import Data.Char (isSpace)
 
 data SQLQuery = SQLQuery
@@ -68,7 +68,7 @@ conditionParser = do
         op <- (string "AND" >> return And) <|> (string "OR" >> return Or)
         skipSpace
         c2 <- term
-        return (op c2)
+        return (op, c2)
     return $ foldl (\acc (op, c2) -> op acc c2) c rest
 
 term :: Parser Condition

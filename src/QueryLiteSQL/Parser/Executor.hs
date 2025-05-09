@@ -1,93 +1,83 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ScopedTypeVariables #-}
+{-# LANGUAGE DeriveGeneric #-}
 
 module QueryLiteSQL.Parser.Executor where
 
-import Data.Aeson (Value(..), Object, Array, (.:?), (.:))
+import Data.Aeson (Value(..), KeyMap)
+import Data.Aeson.KeyMap (lookup, filterWithKey)
 import Data.Text (Text)
 import Data.Vector (Vector, (!), length)
 import qualified Data.Vector as V
-import Data.HashMap.Strict (HashMap)
-import qualified Data.HashMap.Strict as HM
-import Control.Monad (guard)
-import Data.Maybe (fromMaybe)
-
+import Data.List (elem)
 import QueryLiteSQL.Parser.SQL (SQLQuery(..), WhereClause(..), Condition(..), Op(..))
 
-executeQuery :: Value -> SQLQuery -> Either String Value
-executeQuery jsonData query = do
-    -- Extract array from JSON
-    array <- case jsonData of
-        Array arr -> Right arr
-        _ -> Left "Input must be a JSON array"
+type QueryResult = Either String [Value]
 
-    -- Apply WHERE clause
-    filteredArray <- case whereClause query of
-        Nothing -> Right array
-        Just whereClause' -> filterArray array (conditions whereClause')
+executeQuery :: SQLQuery -> [Value] -> QueryResult
+executeQuery query data_ = do
+    filtered <- filterData query data_
+    selected <- selectColumns query filtered
+    limited <- applyLimit query selected
+    return limited
 
-    -- Apply column selection
-    selectedArray <- selectColumns filteredArray (selectCols query)
+filterData :: SQLQuery -> [Value] -> QueryResult
+filterData query data_ = case whereClause query of
+    Nothing -> Right data_
+    Just whereClause' -> filterByCondition (conditions whereClause') data_
 
-    -- Apply LIMIT
-    let limitedArray = case limitClause query of
-            Nothing -> selectedArray
-            Just limit' -> V.take limit' selectedArray
-
-    return $ Array limitedArray
-
-filterArray :: Array -> Condition -> Either String Array
-filterArray array condition = do
-    filtered <- V.filterM (evaluateCondition condition) array
-    return filtered
+filterByCondition :: Condition -> [Value] -> QueryResult
+filterByCondition condition data_ = do
+    filtered <- mapM (evaluateCondition condition) data_
+    return $ [v | (v, True) <- zip data_ filtered]
 
 evaluateCondition :: Condition -> Value -> Either String Bool
-evaluateCondition condition value = case condition of
-    And c1 c2 -> do
-        b1 <- evaluateCondition c1 value
-        b2 <- evaluateCondition c2 value
-        return $ b1 && b2
-    Or c1 c2 -> do
-        b1 <- evaluateCondition c1 value
-        b2 <- evaluateCondition c2 value
-        return $ b1 || b2
-    Parens c -> evaluateCondition c value
-    BinaryOp col op val -> do
-        obj <- case value of
-            Object o -> Right o
-            _ -> Left "Expected object in array"
-        colVal <- case HM.lookup col obj of
-            Just v -> Right v
-            Nothing -> Left $ "Column not found: " ++ show col
-        compareValues colVal op val
+evaluateCondition (And c1 c2) obj = do
+    b1 <- evaluateCondition c1 obj
+    b2 <- evaluateCondition c2 obj
+    return $ b1 && b2
+evaluateCondition (Or c1 c2) obj = do
+    b1 <- evaluateCondition c1 obj
+    b2 <- evaluateCondition c2 obj
+    return $ b1 || b2
+evaluateCondition (BinaryOp col op val) obj = do
+    colVal <- case lookup col obj of
+        Just v -> Right v
+        Nothing -> Left $ "Column not found: " ++ show col
+    compareValues op colVal val
+evaluateCondition (Parens c) obj = evaluateCondition c obj
 
-compareValues :: Value -> Op -> Value -> Either String Bool
-compareValues v1 op v2 = case (v1, v2) of
-    (Number n1, Number n2) -> case op of
-        Eq -> Right $ n1 == n2
-        Neq -> Right $ n1 /= n2
-        Lt -> Right $ n1 < n2
-        Gt -> Right $ n1 > n2
-    (String s1, String s2) -> case op of
-        Eq -> Right $ s1 == s2
-        Neq -> Right $ s1 /= s2
-        _ -> Left "Cannot compare strings with < or >"
+compareValues :: Op -> Value -> Value -> Either String Bool
+compareValues op v1 v2 = case (v1, v2) of
+    (Number n1, Number n2) -> Right $ case op of
+        Eq -> n1 == n2
+        Neq -> n1 /= n2
+        Lt -> n1 < n2
+        Gt -> n1 > n2
+    (String s1, String s2) -> Right $ case op of
+        Eq -> s1 == s2
+        Neq -> s1 /= s2
+        Lt -> s1 < s2
+        Gt -> s1 > s2
+    (Bool b1, Bool b2) -> Right $ case op of
+        Eq -> b1 == b2
+        Neq -> b1 /= b2
+        _ -> False
     _ -> Left "Type mismatch in comparison"
 
-selectColumns :: Array -> [Text] -> Either String Array
-selectColumns array columns = do
-    let selectAll = "*" `elem` columns
-    if selectAll
-        then return array
-        else do
-            selected <- V.mapM (selectColumnsFromObject columns) array
-            return selected
+selectColumns :: SQLQuery -> [Value] -> QueryResult
+selectColumns query data_ = do
+    selected <- mapM (selectRow $ selectCols query) data_
+    return selected
 
-selectColumnsFromObject :: [Text] -> Value -> Either String Value
-selectColumnsFromObject columns value = case value of
-    Object obj -> do
-        let selected = HM.filterWithKey (\k _ -> k `elem` columns) obj
-        if HM.null selected
-            then Left $ "No columns found: " ++ show columns
-            else return $ Object selected
-    _ -> Left "Expected object in array" 
+selectRow :: [Text] -> Value -> Either String Value
+selectRow columns (Object obj) = do
+    let selected = filterWithKey (\k _ -> k `elem` columns) obj
+    if null selected
+        then Left "No matching columns found"
+        else return $ Object selected
+selectRow _ _ = Left "Expected object value"
+
+applyLimit :: SQLQuery -> [Value] -> QueryResult
+applyLimit query data_ = case limitClause query of
+    Nothing -> Right data_
+    Just limit -> Right $ take limit data_ 
