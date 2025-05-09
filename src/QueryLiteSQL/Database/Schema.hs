@@ -7,11 +7,13 @@ import Database.SQLite.Simple
 import Database.SQLite.Simple.FromRow
 import Database.SQLite.Simple.ToRow
 import Data.Text (Text)
-import Data.Time (UTCTime)
+import Data.Time (UTCTime, getCurrentTime)
 import GHC.Generics (Generic)
 import Data.Aeson (Value, encode)
 import Data.ByteString.Lazy (toStrict)
 import Data.UUID (UUID)
+import Data.UUID.V4 (nextRandom)
+import Data.UUID.ToString (toString)
 
 data QueryHistory = QueryHistory
     { queryId :: Text
@@ -37,7 +39,8 @@ initDB = do
 saveQuery :: Connection -> Text -> Text -> IO ()
 saveQuery conn queryText queryResult = do
     now <- getCurrentTime
-    let queryId = UUID.toString $ UUID.nextRandom
+    uuid <- nextRandom
+    let queryId = toString uuid
     execute conn "INSERT INTO query_history (id, query_text, query_result, query_time) VALUES (?, ?, ?, ?)"
         (queryId, queryText, queryResult, now)
 

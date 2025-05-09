@@ -3,7 +3,7 @@
 
 module QueryLiteSQL.Parser.SQL where
 
-import Data.Attoparsec.Text
+import Data.Attoparsec.Text as A
 import Data.Text (Text)
 import Data.Aeson (Value)
 import GHC.Generics (Generic)
@@ -100,7 +100,7 @@ valueParser = do
         [ string "true" >> return (Bool True)
         , string "false" >> return (Bool False)
         , Number <$> scientific
-        , String <$> (char '\'' *> takeWhile (/= '\'') <* char '\'')
+        , String <$> (char '\'' *> A.takeWhile (/= '\'') <* char '\'')
         ]
 
 limitParser :: Parser Int
