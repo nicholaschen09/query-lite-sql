@@ -1,0 +1,107 @@
+[
+  {
+    "state": "California",
+    "region": "West",
+    "pop": 39538223,
+    "pop_male": 19453769,
+    "pop_female": 20084454
+  },
+  {
+    "state": "Texas",
+    "region": "South",
+    "pop": 29145505,
+    "pop_male": 14472510,
+    "pop_female": 14672995
+  },
+  {
+    "state": "Florida",
+    "region": "South",
+    "pop": 21538187,
+    "pop_male": 10513576,
+    "pop_female": 11024611
+  },
+  {
+    "state": "New York",
+    "region": "Northeast",
+    "pop": 20201249,
+    "pop_male": 9750307,
+    "pop_female": 10450942
+  },
+  {
+    "state": "Pennsylvania",
+    "region": "Northeast",
+    "pop": 13002700,
+    "pop_male": 6309631,
+    "pop_female": 6693069
+  },
+  {
+    "state": "Illinois",
+    "region": "Midwest",
+    "pop": 12812508,
+    "pop_male": 6260438,
+    "pop_female": 6552070
+  },
+  {
+    "state": "Ohio",
+    "region": "Midwest",
+    "pop": 11799448,
+    "pop_male": 5742401,
+    "pop_female": 6057047
+  },
+  {
+    "state": "Georgia",
+    "region": "South",
+    "pop": 10711908,
+    "pop_male": 5158725,
+    "pop_female": 5553183
+  },
+  {
+    "state": "North Carolina",
+    "region": "South",
+    "pop": 10439388,
+    "pop_male": 5055500,
+    "pop_female": 5383888
+  },
+  {
+    "state": "Michigan",
+    "region": "Midwest",
+    "pop": 10077331,
+    "pop_male": 4928015,
+    "pop_female": 5149316
+  },
+  {
+    "state": "New Jersey",
+    "region": "Northeast",
+    "pop": 9288994,
+    "pop_male": 4499433,
+    "pop_female": 4789561
+  },
+  {
+    "state": "Virginia",
+    "region": "South",
+    "pop": 8631393,
+    "pop_male": 4216352,
+    "pop_female": 4415041
+  },
+  {
+    "state": "Washington",
+    "region": "West",
+    "pop": 7693612,
+    "pop_male": 3819325,
+    "pop_female": 3874287
+  },
+  {
+    "state": "Arizona",
+    "region": "West",
+    "pop": 7151502,
+    "pop_male": 3532974,
+    "pop_female": 3618528
+  },
+  {
+    "state": "Massachusetts",
+    "region": "Northeast",
+    "pop": 7029917,
+    "pop_male": 3395889,
+    "pop_female": 3634028
+  }
+] 

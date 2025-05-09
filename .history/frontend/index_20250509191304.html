@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Query Lite SQL</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h1, h2 {
+            color: #333;
+        }
+        textarea {
+            width: 100%;
+            height: 100px;
+            padding: 8px;
+            margin-bottom: 10px;
+            font-family: monospace;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #result {
+            margin-top: 20px;
+            border: 1px solid #ddd;
+            padding: 15px;
+            background-color: #f9f9f9;
+        }
+        .error {
+            color: red;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 10px;
+        }
+        th, td {
+            border: 1px solid #ddd;
+            padding: 8px;
+            text-align: left;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        .history-item {
+            border: 1px solid #ddd;
+            padding: 10px;
+            margin-bottom: 10px;
+            background-color: #f9f9f9;
+        }
+        .query-text {
+            font-family: monospace;
+            background-color: #eee;
+            padding: 5px;
+            margin: 5px 0;
+        }
+        .timestamp {
+            color: #777;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <h1>Query Lite SQL</h1>
+    
+    <div>
+        <h2>SQL Query</h2>
+        <textarea id="query" placeholder="Enter your SQL query here...">SELECT * FROM table LIMIT 10</textarea>
+        <button onclick="executeQuery()">Execute Query</button>
+    </div>
+    
+    <div id="result">
+        <h2>Result</h2>
+        <div id="result-content"></div>
+    </div>
+    
+    <div id="history-container">
+        <h2>Query History</h2>
+        <div id="history-list"></div>
+    </div>
+
+    <script>
+        // Load history on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadHistory();
+        });
+
+        // Execute SQL query
+        function executeQuery(query) {
+            const queryText = query || document.getElementById('query').value;
+            
+            fetch(`/api/query?q=${encodeURIComponent(queryText)}`)
+                .then(response => response.json())
+                .then(data => {
+                    displayResult(data);
+                    loadHistory(); // Refresh history after executing query
+                })
+                .catch(error => {
+                    document.getElementById('result-content').innerHTML = 
+                        `<div class="error">Error: ${error.message}</div>`;
+                });
+        }
+
+        // Display query result
+        function displayResult(data) {
+            const resultElement = document.getElementById('result-content');
+            
+            if (data.error) {
+                resultElement.innerHTML = `<div class="error">Error: ${data.error}</div>`;
+                return;
+            }
+            
+            if (Array.isArray(data) && data.length > 0) {
+                // Create table
+                const table = document.createElement('table');
+                
+                // Create table header
+                const thead = document.createElement('thead');
+                const headerRow = document.createElement('tr');
+                
+                // Get columns from first row
+                const columns = Object.keys(data[0]);
+                columns.forEach(column => {
+                    const th = document.createElement('th');
+                    th.textContent = column;
+                    headerRow.appendChild(th);
+                });
+                
+                thead.appendChild(headerRow);
+                table.appendChild(thead);
+                
+                // Create table body
+                const tbody = document.createElement('tbody');
+                
+                data.forEach(row => {
+                    const tr = document.createElement('tr');
+                    
+                    columns.forEach(column => {
+                        const td = document.createElement('td');
+                        td.textContent = row[column] !== null ? row[column] : 'null';
+                        tr.appendChild(td);
+                    });
+                    
+                    tbody.appendChild(tr);
+                });
+                
+                table.appendChild(tbody);
+                resultElement.innerHTML = '';
+                resultElement.appendChild(table);
+            } else {
+                resultElement.innerHTML = '<div>No results found or empty array.</div>';
+            }
+        }
+
+        // Load query history
+        function loadHistory() {
+            fetch('/api/history')
+                .then(response => response.json())
+                .then(data => {
+                    const historyList = document.getElementById('history-list');
+                    historyList.innerHTML = '';
+                    
+                    if (data.length === 0) {
+                        historyList.innerHTML = '<div>No query history yet.</div>';
+                        return;
+                    }
+                    
+                    data.forEach(item => {
+                        const historyItem = document.createElement('div');
+                        historyItem.className = 'history-item';
+                        
+                        const timestamp = new Date(item.timestamp).toLocaleString();
+                        
+                        historyItem.innerHTML = `
+                            <div class="timestamp">${timestamp}</div>
+                            <div class="query-text">${item.query}</div>
+                            <button onclick="executeQuery('${item.query.replace(/'/g, "\\'")}')">
+                                Run Again
+                            </button>
+                        `;
+                        
+                        historyList.appendChild(historyItem);
+                    });
+                })
+                .catch(error => {
+                    document.getElementById('history-list').innerHTML = 
+                        `<div class="error">Error loading history: ${error.message}</div>`;
+                });
+        }
+    </script>
+</body>
+</html> 
