@@ -22,6 +22,7 @@ executable query-lite-sql-exe
                   , scotty
                   , wai
                   , wai-cors
+                  , wai-middleware-static
                   , text
                   , bytestring
                   , sqlite-simple

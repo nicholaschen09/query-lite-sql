@@ -180,6 +180,16 @@
   (major1) == 0 && (major2) <  2 || \
   (major1) == 0 && (major2) == 2 && (minor) <= 7)
 #endif /* MIN_VERSION_wai_cors */
+/* package wai-middleware-static-0.9.3 */
+#ifndef VERSION_wai_middleware_static
+#define VERSION_wai_middleware_static "0.9.3"
+#endif /* VERSION_wai_middleware_static */
+#ifndef MIN_VERSION_wai_middleware_static
+#define MIN_VERSION_wai_middleware_static(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  9 || \
+  (major1) == 0 && (major2) == 9 && (minor) <= 3)
+#endif /* MIN_VERSION_wai_middleware_static */
 
 /* tool gcc-17.0.0 */
 #ifndef TOOL_VERSION_gcc
