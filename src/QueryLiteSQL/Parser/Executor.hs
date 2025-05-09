@@ -1,4 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
+{-# LANGUAGE TupleSections #-}
 
 module QueryLiteSQL.Parser.Executor
     ( executeQuery
@@ -11,7 +12,8 @@ import qualified Data.HashMap.Strict as HM
 import Data.Scientific (Scientific, toRealFloat)
 import Data.Maybe (mapMaybe)
 
-import QueryLiteSQL.Parser.SQL
+import QueryLiteSQL.Parser.SQL (SQLQuery(..), SQLSelect(..), SQLWhere(..), Condition(..), BinaryOp(..))
+import qualified QueryLiteSQL.Parser.SQL as SQL
 
 -- Execute an SQL query against JSON data
 executeQuery :: SQLQuery -> [Value] -> Either String Value
@@ -59,25 +61,25 @@ evaluateCondition (Parenthesized c) row =
     evaluateCondition c row
 
 -- Evaluate a binary operation
-evaluateBinaryOp :: BinaryOp -> Value -> Value -> Bool
-evaluateBinaryOp Equals (StringVal s) (String t) = s == t
-evaluateBinaryOp Equals (NumberVal n) (Number m) = n == (toRealFloat m :: Double)
-evaluateBinaryOp Equals (ColumnRef colRef) row = 
+evaluateBinaryOp :: BinaryOp -> SQL.Value -> Value -> Bool
+evaluateBinaryOp Equals (SQL.StringVal s) (String t) = s == t
+evaluateBinaryOp Equals (SQL.NumberVal n) (Number m) = n == (toRealFloat m :: Double)
+evaluateBinaryOp Equals (SQL.ColumnRef colRef) row = 
     case extractValue colRef row of
         Just val -> evaluateBinaryOp Equals val row
         Nothing -> False
 
 evaluateBinaryOp NotEquals val1 val2 = not (evaluateBinaryOp Equals val1 val2)
 
-evaluateBinaryOp LessThan (NumberVal n) (Number m) = n < (toRealFloat m :: Double)
-evaluateBinaryOp LessThan (ColumnRef colRef) row =
+evaluateBinaryOp LessThan (SQL.NumberVal n) (Number m) = n < (toRealFloat m :: Double)
+evaluateBinaryOp LessThan (SQL.ColumnRef colRef) row =
     case extractValue colRef row of
         Just val -> evaluateBinaryOp LessThan val row
         Nothing -> False
 evaluateBinaryOp LessThan _ _ = False
 
-evaluateBinaryOp GreaterThan (NumberVal n) (Number m) = n > (toRealFloat m :: Double)
-evaluateBinaryOp GreaterThan (ColumnRef colRef) row =
+evaluateBinaryOp GreaterThan (SQL.NumberVal n) (Number m) = n > (toRealFloat m :: Double)
+evaluateBinaryOp GreaterThan (SQL.ColumnRef colRef) row =
     case extractValue colRef row of
         Just val -> evaluateBinaryOp GreaterThan val row
         Nothing -> False

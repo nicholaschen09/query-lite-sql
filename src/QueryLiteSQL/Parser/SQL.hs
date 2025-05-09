@@ -14,7 +14,7 @@ import Control.Applicative ((<|>), many, optional)
 import Data.Attoparsec.Text
 import Data.Char (isAlpha, isAlphaNum, isDigit)
 import Data.Functor (($>))
-import Data.Text (Text, pack)
+import Data.Text (Text, pack, unpack)
 import qualified Data.Text as T
 
 -- SQL Values
@@ -180,7 +180,8 @@ numberValueParser = do
         _ <- char '.'
         frac <- many1 (satisfy isDigit)
         return $ '.' : frac
-    let numStr = neg ++ intPart ++ fracPart
+    -- Convert to string before reading as Double
+    let numStr = unpack neg ++ intPart ++ fracPart
     return $ NumberVal (read numStr)
 
 -- Parser for column references
