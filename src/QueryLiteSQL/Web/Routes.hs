@@ -1,49 +1,50 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
+{-# LANGUAGE FlexibleContexts #-}
+{-# LANGUAGE TypeFamilies #-}
 
 module QueryLiteSQL.Web.Routes where
 
-import qualified Web.Scotty.Trans as Scotty
+import Web.Scotty.Trans
 import qualified Network.Wai.Middleware.Static as Static
 import Data.Text.Lazy (Text)
-import Data.Aeson (Value(..), object, (.=))
+import Data.Text (pack)
+import Data.Aeson (Value(..), object, (.=), ToJSON(..))
 import Control.Monad.Reader (ReaderT, ask)
 import Control.Monad.IO.Class (liftIO)
 import QueryLiteSQL.Parser.SQL (parseSQL)
 import QueryLiteSQL.Parser.Executor (executeQuery)
 import QueryLiteSQL.Types.Env (Env(..))
-import QueryLiteSQL.Database.Schema (saveQuery, getQueryHistory)
+import QueryLiteSQL.Database.Schema (saveQuery, getQueryHistory, QueryHistory(..))
 import Database.SQLite.Simple (Connection)
 
-type AppM = ReaderT Env IO
-
-routes :: Scotty.ScottyT Text AppM ()
+-- This function doesn't need a complex type - it's just a value used in a do block in main
 routes = do
     -- Serve static files
-    Scotty.middleware $ Static.staticPolicy (Static.noDots >-> Static.addBase "static")
+    middleware $ Static.staticPolicy (Static.noDots Static.>-> Static.addBase "static")
 
     -- API endpoints
-    Scotty.get "/api/query" $ do
-        query <- Scotty.param "q"
+    get "/api/query" $ do
+        query <- param "q"
         case parseSQL query of
-            Left err -> Scotty.json $ object ["error" .= err]
+            Left err -> json $ object ["error" .= err]
             Right sqlQuery -> do
-                env <- lift ask
-                case executeQuery sqlQuery (jsonData env) of
-                    Left err -> Scotty.json $ object ["error" .= err]
+                env <- liftAndCatchIO $ ask
+                case executeQuery sqlQuery [QueryLiteSQL.Types.Env.jsonData env] of
+                    Left err -> json $ object ["error" .= err]
                     Right result -> do
-                        conn <- liftIO $ connection env
-                        liftIO $ saveQuery conn query (show result)
-                        Scotty.json $ object ["result" .= result]
+                        conn <- return $ dbConnection env
+                        liftIO $ saveQuery conn query (pack $ show result)
+                        json $ object ["result" .= result]
 
-    Scotty.get "/api/history" $ do
-        env <- lift ask
-        conn <- liftIO $ connection env
+    get "/api/history" $ do
+        env <- liftAndCatchIO $ ask
+        conn <- return $ dbConnection env
         history <- liftIO $ getQueryHistory conn
-        Scotty.json history
+        json $ object ["history" .= history]
 
     -- Frontend routes
-    Scotty.get "/" $ Scotty.file "static/index.html"
-    Scotty.get "/:file" $ do
-        file <- Scotty.param "file"
-        Scotty.file $ "static/" ++ file 
+    get "/" $ file "static/index.html"
+    get "/:file" $ do
+        f <- param "file"
+        file $ "static/" ++ f 
