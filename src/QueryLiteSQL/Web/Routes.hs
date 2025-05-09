@@ -15,12 +15,20 @@ import Control.Monad.Reader (ReaderT, ask, MonadReader)
 import Control.Monad.IO.Class (liftIO, MonadIO)
 import QueryLiteSQL.Parser.SQL (parseSQL)
 import QueryLiteSQL.Parser.Executor (executeQuery)
-import QueryLiteSQL.Types.Env (Env(..))
+import qualified QueryLiteSQL.Types.Env as Env
 import QueryLiteSQL.Database.Schema (saveQuery, getQueryHistory, QueryHistory(..))
 import Database.SQLite.Simple (Connection)
 
+-- Define ToJSON instance for QueryHistory
+instance ToJSON QueryHistory where
+    toJSON h = object [ "id" .= QueryLiteSQL.Database.Schema.id h
+                       , "query" .= query h
+                       , "result" .= result h
+                       , "timestamp" .= timestamp h
+                       ]
+
 -- Define routes for the application
--- We omit the explicit type signature to let Haskell infer it
+routes :: (MonadIO m, MonadReader Env.Env m) => ScottyT Text m ()
 routes = do
     -- Serve static files
     middleware $ Static.staticPolicy (Static.noDots Static.>-> Static.addBase "static")
@@ -31,17 +39,17 @@ routes = do
         case parseSQL query of
             Left err -> json $ object ["error" .= err]
             Right sqlQuery -> do
-                env <- liftAndCatchIO $ ask
-                case executeQuery sqlQuery [jsonData env] of
+                env <- lift ask
+                case executeQuery sqlQuery [Env.jsonData env] of
                     Left err -> json $ object ["error" .= err]
                     Right result -> do
-                        conn <- return $ dbConnection env
+                        conn <- return $ Env.dbConnection env
                         liftIO $ saveQuery conn query (pack $ show result)
                         json $ object ["result" .= result]
 
     get "/api/history" $ do
-        env <- liftAndCatchIO $ ask
-        conn <- return $ dbConnection env
+        env <- lift ask
+        conn <- return $ Env.dbConnection env
         history <- liftIO $ getQueryHistory conn
         json $ object ["history" .= history]
 
