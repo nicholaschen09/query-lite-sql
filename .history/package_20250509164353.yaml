@@ -1,0 +1,28 @@
+name: query-lite-sql
+version: 0.1.0.0
+description: SQL query interface for JSON data
+dependencies:
+  - base >= 4.7 && < 5
+  - aeson
+  - attoparsec
+  - scotty
+  - wai
+  - wai-cors
+  - text
+  - bytestring
+  - sqlite-simple
+  - mtl
+  - directory
+  - filepath
+  - time
+  - uuid
+  - uuid-types
+
+executables:
+  query-lite-sql-exe:
+    main: Main.hs
+    source-dirs: app
+    ghc-options:
+      - -threaded
+      - -rtsopts
+      - -with-rtsopts=-N 
