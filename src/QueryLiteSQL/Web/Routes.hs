@@ -41,9 +41,4 @@ routes = do
     get "/api/history" $ do
         env <- ask
         history <- liftIO $ getQueryHistory (dbConnection env)
-        json history
-
-executeQuery :: Env -> SQLQuery -> IO Value
-executeQuery env query = do
-    -- TODO: Implement query execution
-    return $ object ["message" .= ("Query execution not implemented yet" :: String)] 
+        json history 
