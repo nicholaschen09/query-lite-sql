@@ -4,7 +4,7 @@
 module QueryLiteSQL.Web.Routes where
 
 import qualified Web.Scotty.Trans as Scotty
-import qualified Wai.Middleware.Static as Static
+import qualified Network.Wai.Middleware.Static as Static
 import Data.Text.Lazy (Text)
 import Data.Aeson (Value(..), object, (.=))
 import Control.Monad.Reader (ReaderT, ask)
