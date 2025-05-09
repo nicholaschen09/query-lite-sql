@@ -18,7 +18,7 @@ version :: Version
 version = Version [0,1,0,0] []
 
 synopsis :: String
-synopsis = "SQL query interface for JSON data"
+synopsis = ""
 copyright :: String
 copyright = ""
 homepage :: String

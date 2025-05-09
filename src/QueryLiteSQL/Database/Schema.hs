@@ -1,64 +1,49 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE DeriveGeneric #-}
 
-module QueryLiteSQL.Database.Schema where
+module QueryLiteSQL.Database.Schema
+    ( initDB
+    , saveQuery
+    , getQueryHistory
+    , QueryHistory(..)
+    ) where
 
+import Data.Text (Text)
+import Data.Time (UTCTime, getCurrentTime)
 import Database.SQLite.Simple
 import Database.SQLite.Simple.FromRow
 import Database.SQLite.Simple.ToRow
-import Database.SQLite.Simple.FromField
-import Database.SQLite.Simple.ToField
-import Data.Text (Text)
-import Data.Time (UTCTime, getCurrentTime)
 import GHC.Generics (Generic)
-import Data.Aeson (Value, encode, ToJSON(..), FromJSON(..))
-import Data.ByteString.Lazy (toStrict)
-import Data.UUID (UUID)
-import Data.UUID.V4 (nextRandom)
-import Data.Text.Encoding (encodeUtf8)
-import Data.ByteString (ByteString)
-import Data.Text (pack)
-import Data.UUID (fromString, toString)
 
-instance FromField UUID where
-    fromField f = do
-        str <- fromField f
-        case fromString str of
-            Just uuid -> return uuid
-            Nothing -> returnError ConversionFailed f "Invalid UUID format"
-
-instance ToField UUID where
-    toField = toField . toString
-
+-- Define the QueryHistory data type
 data QueryHistory = QueryHistory
-    { queryId :: UUID
-    , queryText :: Text
-    , resultText :: Text
+    { id :: Int
+    , query :: Text
+    , result :: Text
     , timestamp :: UTCTime
     } deriving (Show, Generic)
 
-instance ToJSON QueryHistory
-instance FromJSON QueryHistory
-instance FromRow QueryHistory
-instance ToRow QueryHistory
+instance FromRow QueryHistory where
+    fromRow = QueryHistory <$> field <*> field <*> field <*> field
 
+instance ToRow QueryHistory where
+    toRow (QueryHistory id' query' result' timestamp') =
+        toRow (id', query', result', timestamp')
+
+-- Initialize the database
 initDB :: IO ()
 initDB = do
     conn <- open "db.db"
-    execute_ conn "CREATE TABLE IF NOT EXISTS query_history (\
-        \query_id TEXT PRIMARY KEY,\
-        \query_text TEXT NOT NULL,\
-        \result_text TEXT NOT NULL,\
-        \timestamp TIMESTAMP NOT NULL\
-        \)"
+    execute_ conn "CREATE TABLE IF NOT EXISTS queries (id INTEGER PRIMARY KEY, query TEXT, result TEXT, timestamp TIMESTAMP)"
     close conn
 
+-- Save a query to the database
 saveQuery :: Connection -> Text -> Text -> IO ()
-saveQuery conn query result = do
-    uuid <- nextRandom
+saveQuery conn query' result' = do
     now <- getCurrentTime
-    execute conn "INSERT INTO query_history (query_id, query_text, result_text, timestamp) VALUES (?, ?, ?, ?)"
-        (uuid, query, result, now)
+    execute conn "INSERT INTO queries (query, result, timestamp) VALUES (?, ?, ?)" (query', result', now)
 
+-- Get the query history
 getQueryHistory :: Connection -> IO [QueryHistory]
-getQueryHistory conn = query_ conn "SELECT query_id, query_text, result_text, timestamp FROM query_history ORDER BY timestamp DESC LIMIT 100" 
+getQueryHistory conn =
+    query_ conn "SELECT id, query, result, timestamp FROM queries ORDER BY timestamp DESC" 

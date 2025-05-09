@@ -1,109 +1,213 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
-module QueryLiteSQL.Parser.SQL where
+module QueryLiteSQL.Parser.SQL
+    ( parseSQL
+    , SQLQuery(..)
+    , SQLSelect(..)
+    , SQLWhere(..)
+    , Condition(..)
+    , BinaryOp(..)
+    , Value(..)
+    ) where
 
-import Data.Attoparsec.Text as A
-import Data.Text (Text)
-import Data.Aeson (Value(..))
-import GHC.Generics (Generic)
 import Control.Applicative ((<|>), many, optional)
-import Data.Char (isSpace)
+import Data.Attoparsec.Text
+import Data.Char (isAlpha, isAlphaNum, isDigit)
+import Data.Functor (($>))
+import Data.Text (Text, pack)
+import qualified Data.Text as T
 
+-- SQL Values
+data Value = StringVal Text | NumberVal Double | ColumnRef Text
+    deriving (Show, Eq)
+
+-- Binary operators
+data BinaryOp = Equals | NotEquals | LessThan | GreaterThan
+    deriving (Show, Eq)
+
+-- Conditions for WHERE clause
+data Condition
+    = BinaryCondition Text BinaryOp Value
+    | AndCondition Condition Condition
+    | OrCondition Condition Condition
+    | Parenthesized Condition
+    deriving (Show, Eq)
+
+-- WHERE clause
+data SQLWhere = SQLWhere Condition | NoWhere
+    deriving (Show, Eq)
+
+-- SELECT statement
+data SQLSelect = SQLSelectColumns [Text] | SQLSelectAll
+    deriving (Show, Eq)
+
+-- Full SQL query
 data SQLQuery = SQLQuery
-    { selectCols :: [Text]
-    , fromTable :: Text
-    , whereClause :: Maybe WhereClause
-    , limitClause :: Maybe Int
-    } deriving (Show, Generic)
+    { sqlSelect :: SQLSelect
+    , sqlWhere  :: SQLWhere
+    , sqlLimit  :: Maybe Int
+    }
+    deriving (Show, Eq)
 
-data WhereClause = WhereClause
-    { conditions :: Condition
-    } deriving (Show, Generic)
-
-data Condition = And Condition Condition
-               | Or Condition Condition
-               | BinaryOp Text Op Value
-               | Parens Condition
-               deriving (Show, Generic)
-
-data Op = Eq | Neq | Lt | Gt
-        deriving (Show, Generic)
-
+-- Main parsing function
 parseSQL :: Text -> Either String SQLQuery
-parseSQL = parseOnly sqlQuery
+parseSQL = parseOnly sqlQueryParser
 
-sqlQuery :: Parser SQLQuery
-sqlQuery = do
-    string "SELECT" >> skipSpace
-    cols <- selectColumns
-    skipSpace >> string "FROM" >> skipSpace
-    table <- takeWhile1 (not . isSpace)
-    whereClause <- optional (skipSpace >> whereParser)
-    limitClause <- optional (skipSpace >> limitParser)
+-- Parser for a full SQL query
+sqlQueryParser :: Parser SQLQuery
+sqlQueryParser = do
+    skipSpace
+    _ <- caseInsensitiveString "SELECT"
+    skipSpace
+    selectPart <- selectParser
+    skipSpace
+    _ <- caseInsensitiveString "FROM"
+    skipSpace
+    -- We don't really care about the table name as we only have one table
+    _ <- tableNameParser
+    skipSpace
+    whereClause <- option NoWhere whereParser
+    skipSpace
+    limit <- option Nothing limitParser
+    skipSpace
     endOfInput
-    return $ SQLQuery cols table whereClause limitClause
+    return $ SQLQuery selectPart whereClause limit
 
-selectColumns :: Parser [Text]
-selectColumns = do
-    cols <- sepBy1 columnName (char ',' >> skipSpace)
-    return cols
+-- Parser for the SELECT part
+selectParser :: Parser SQLSelect
+selectParser = selectAllParser <|> selectColumnsParser
+  where
+    selectAllParser = char '*' $> SQLSelectAll
+    selectColumnsParser = SQLSelectColumns <$> columnParser `sepBy1` (skipSpace *> char ',' <* skipSpace)
 
-columnName :: Parser Text
-columnName = do
-    skipSpace
-    name <- takeWhile1 (not . (`elem` [',', ' ', '\t', '\n']))
-    return name
+-- Parse column names
+columnParser :: Parser Text
+columnParser = pack <$> many1 (satisfy isValidColumnChar)
+  where
+    isValidColumnChar c = isAlphaNum c || c == '_'
 
-whereParser :: Parser WhereClause
+-- Parse table name
+tableNameParser :: Parser Text
+tableNameParser = pack <$> many1 (satisfy isValidTableChar)
+  where
+    isValidTableChar c = isAlphaNum c || c == '_'
+
+-- Parser for the WHERE clause
+whereParser :: Parser SQLWhere
 whereParser = do
-    string "WHERE" >> skipSpace
-    WhereClause <$> conditionParser
+    _ <- caseInsensitiveString "WHERE"
+    skipSpace
+    SQLWhere <$> conditionParser
 
+-- Parser for conditions in WHERE clause
 conditionParser :: Parser Condition
-conditionParser = do
-    c <- term
-    rest <- many $ do
+conditionParser = orConditionParser
+
+-- Parser for OR conditions
+orConditionParser :: Parser Condition
+orConditionParser = do
+    left <- andConditionParser
+    option left $ do
         skipSpace
-        op <- (string "AND" >> return And) <|> (string "OR" >> return Or)
+        _ <- caseInsensitiveString "OR"
         skipSpace
-        c2 <- term
-        return (op, c2)
-    return $ foldl (\acc (op, c2) -> op acc c2) c rest
+        right <- orConditionParser
+        return $ OrCondition left right
 
-term :: Parser Condition
-term = do
-    skipSpace
-    choice
-        [ Parens <$> (char '(' >> conditionParser <* char ')')
-        , binaryOpParser
-        ]
+-- Parser for AND conditions
+andConditionParser :: Parser Condition
+andConditionParser = do
+    left <- atomicConditionParser
+    option left $ do
+        skipSpace
+        _ <- caseInsensitiveString "AND"
+        skipSpace
+        right <- andConditionParser
+        return $ AndCondition left right
 
-binaryOpParser :: Parser Condition
-binaryOpParser = do
-    col <- takeWhile1 (not . (`elem` ['=', '!', '<', '>', ' ']))
-    skipSpace
-    op <- choice
-        [ string "=" >> return Eq
-        , string "!=" >> return Neq
-        , string "<" >> return Lt
-        , string ">" >> return Gt
-        ]
-    skipSpace
-    val <- valueParser
-    return $ BinaryOp col op val
+-- Parser for atomic conditions
+atomicConditionParser :: Parser Condition
+atomicConditionParser = parenthesizedConditionParser <|> binaryConditionParser
 
+-- Parser for conditions in parentheses
+parenthesizedConditionParser :: Parser Condition
+parenthesizedConditionParser = do
+    skipSpace
+    _ <- char '('
+    skipSpace
+    condition <- conditionParser
+    skipSpace
+    _ <- char ')'
+    return $ Parenthesized condition
+
+-- Parser for binary conditions
+binaryConditionParser :: Parser Condition
+binaryConditionParser = do
+    skipSpace
+    column <- columnParser
+    skipSpace
+    op <- binaryOpParser
+    skipSpace
+    value <- valueParser
+    return $ BinaryCondition column op value
+
+-- Parser for binary operators
+binaryOpParser :: Parser BinaryOp
+binaryOpParser =
+        (string "="  $> Equals)
+    <|> (string "!=" $> NotEquals)
+    <|> (string "<"  $> LessThan)
+    <|> (string ">"  $> GreaterThan)
+
+-- Parser for values
 valueParser :: Parser Value
-valueParser = do
-    skipSpace
-    choice
-        [ string "true" >> return (Bool True)
-        , string "false" >> return (Bool False)
-        , Number <$> scientific
-        , String <$> (char '\'' *> A.takeWhile (/= '\'') <* char '\'')
-        ]
+valueParser = stringValueParser <|> numberValueParser <|> columnRefParser
 
-limitParser :: Parser Int
+-- Parser for string values
+stringValueParser :: Parser Value
+stringValueParser = do
+    _ <- char '\''
+    value <- many (satisfy (/= '\''))
+    _ <- char '\''
+    return $ StringVal (pack value)
+
+-- Parser for number values
+numberValueParser :: Parser Value
+numberValueParser = do
+    neg <- option "" (string "-")
+    intPart <- many1 (satisfy isDigit)
+    fracPart <- option "" $ do
+        _ <- char '.'
+        frac <- many1 (satisfy isDigit)
+        return $ '.' : frac
+    let numStr = neg ++ intPart ++ fracPart
+    return $ NumberVal (read numStr)
+
+-- Parser for column references
+columnRefParser :: Parser Value
+columnRefParser = ColumnRef <$> columnParser
+
+-- Parser for LIMIT clause
+limitParser :: Parser (Maybe Int)
 limitParser = do
-    string "LIMIT" >> skipSpace
-    decimal 
+    _ <- caseInsensitiveString "LIMIT"
+    skipSpace
+    Just . read <$> many1 (satisfy isDigit)
+
+-- Case insensitive string parser
+caseInsensitiveString :: String -> Parser Text
+caseInsensitiveString str = do
+    res <- mapM caseInsensitiveChar str
+    return $ pack res
+
+-- Case insensitive character parser
+caseInsensitiveChar :: Char -> Parser Char
+caseInsensitiveChar c = if isAlpha c
+    then satisfy (\x -> x == c || x == toOppositeCase c)
+    else char c
+  where
+    toOppositeCase :: Char -> Char
+    toOppositeCase ch
+        | isAlpha ch && ch >= 'a' && ch <= 'z' = toEnum (fromEnum ch - 32)
+        | isAlpha ch && ch >= 'A' && ch <= 'Z' = toEnum (fromEnum ch + 32)
+        | otherwise = ch 

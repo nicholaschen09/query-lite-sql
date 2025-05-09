@@ -50,26 +50,26 @@
   (major1) == 0 && (major2) <  12 || \
   (major1) == 0 && (major2) == 12 && (minor) <= 2)
 #endif /* MIN_VERSION_bytestring */
-/* package directory-1.3.9.0 */
-#ifndef VERSION_directory
-#define VERSION_directory "1.3.9.0"
-#endif /* VERSION_directory */
-#ifndef MIN_VERSION_directory
-#define MIN_VERSION_directory(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  3 || \
-  (major1) == 1 && (major2) == 3 && (minor) <= 9)
-#endif /* MIN_VERSION_directory */
-/* package filepath-1.5.4.0 */
-#ifndef VERSION_filepath
-#define VERSION_filepath "1.5.4.0"
-#endif /* VERSION_filepath */
-#ifndef MIN_VERSION_filepath
-#define MIN_VERSION_filepath(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  5 || \
-  (major1) == 1 && (major2) == 5 && (minor) <= 4)
-#endif /* MIN_VERSION_filepath */
+/* package containers-0.7 */
+#ifndef VERSION_containers
+#define VERSION_containers "0.7"
+#endif /* VERSION_containers */
+#ifndef MIN_VERSION_containers
+#define MIN_VERSION_containers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  7 || \
+  (major1) == 0 && (major2) == 7 && (minor) <= 0)
+#endif /* MIN_VERSION_containers */
+/* package http-types-0.12.4 */
+#ifndef VERSION_http_types
+#define VERSION_http_types "0.12.4"
+#endif /* VERSION_http_types */
+#ifndef MIN_VERSION_http_types
+#define MIN_VERSION_http_types(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  12 || \
+  (major1) == 0 && (major2) == 12 && (minor) <= 4)
+#endif /* MIN_VERSION_http_types */
 /* package mtl-2.3.1 */
 #ifndef VERSION_mtl
 #define VERSION_mtl "2.3.1"
@@ -80,6 +80,16 @@
   (major1) == 2 && (major2) <  3 || \
   (major1) == 2 && (major2) == 3 && (minor) <= 1)
 #endif /* MIN_VERSION_mtl */
+/* package scientific-0.3.8.0 */
+#ifndef VERSION_scientific
+#define VERSION_scientific "0.3.8.0"
+#endif /* VERSION_scientific */
+#ifndef MIN_VERSION_scientific
+#define MIN_VERSION_scientific(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  3 || \
+  (major1) == 0 && (major2) == 3 && (minor) <= 8)
+#endif /* MIN_VERSION_scientific */
 /* package scotty-0.22 */
 #ifndef VERSION_scotty
 #define VERSION_scotty "0.22"
@@ -120,6 +130,16 @@
   (major1) == 1 && (major2) <  14 || \
   (major1) == 1 && (major2) == 14 && (minor) <= 0)
 #endif /* MIN_VERSION_time */
+/* package transformers-0.6.1.2 */
+#ifndef VERSION_transformers
+#define VERSION_transformers "0.6.1.2"
+#endif /* VERSION_transformers */
+#ifndef MIN_VERSION_transformers
+#define MIN_VERSION_transformers(major1,major2,minor) (\
+  (major1) <  0 || \
+  (major1) == 0 && (major2) <  6 || \
+  (major1) == 0 && (major2) == 6 && (minor) <= 1)
+#endif /* MIN_VERSION_transformers */
 /* package unordered-containers-0.2.20 */
 #ifndef VERSION_unordered_containers
 #define VERSION_unordered_containers "0.2.20"
@@ -130,26 +150,6 @@
   (major1) == 0 && (major2) <  2 || \
   (major1) == 0 && (major2) == 2 && (minor) <= 20)
 #endif /* MIN_VERSION_unordered_containers */
-/* package uuid-1.3.16 */
-#ifndef VERSION_uuid
-#define VERSION_uuid "1.3.16"
-#endif /* VERSION_uuid */
-#ifndef MIN_VERSION_uuid
-#define MIN_VERSION_uuid(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  3 || \
-  (major1) == 1 && (major2) == 3 && (minor) <= 16)
-#endif /* MIN_VERSION_uuid */
-/* package uuid-types-1.0.6 */
-#ifndef VERSION_uuid_types
-#define VERSION_uuid_types "1.0.6"
-#endif /* VERSION_uuid_types */
-#ifndef MIN_VERSION_uuid_types
-#define MIN_VERSION_uuid_types(major1,major2,minor) (\
-  (major1) <  1 || \
-  (major1) == 1 && (major2) <  0 || \
-  (major1) == 1 && (major2) == 0 && (minor) <= 6)
-#endif /* MIN_VERSION_uuid_types */
 /* package vector-0.13.2.0 */
 #ifndef VERSION_vector
 #define VERSION_vector "0.13.2.0"
@@ -272,8 +272,11 @@
   (major1) == 9 && (major2) == 12 && (minor) <= 2)
 #endif /* MIN_TOOL_VERSION_runghc */
 
+#ifndef CURRENT_PACKAGE_KEY
+#define CURRENT_PACKAGE_KEY "query-lite-sql-0.1.0.0-inplace"
+#endif /* CURRENT_packageKey */
 #ifndef CURRENT_COMPONENT_ID
-#define CURRENT_COMPONENT_ID "query-lite-sql-0.1.0.0-inplace-query-lite-sql-exe"
+#define CURRENT_COMPONENT_ID "query-lite-sql-0.1.0.0-inplace"
 #endif /* CURRENT_COMPONENT_ID */
 #ifndef CURRENT_PACKAGE_VERSION
 #define CURRENT_PACKAGE_VERSION "0.1.0.0"

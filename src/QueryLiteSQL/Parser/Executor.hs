@@ -1,87 +1,96 @@
 {-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE DeriveGeneric #-}
 
-module QueryLiteSQL.Parser.Executor where
+module QueryLiteSQL.Parser.Executor
+    ( executeQuery
+    ) where
 
-import Data.Aeson (Value(..))
-import Data.Aeson.KeyMap (KeyMap)
-import qualified Data.Aeson.KeyMap as KM
-import Data.Text (Text)
-import Data.Vector (Vector, (!), length)
+import Data.Aeson (Value(..), Object, Array, toJSON, fromJSON, Result(..), (.=), object)
+import Data.Text (Text, unpack)
 import qualified Data.Vector as V
-import Data.List (elem)
-import QueryLiteSQL.Parser.SQL (SQLQuery(..), WhereClause(..), Condition(..), Op(..))
-import Data.Aeson.Key (fromText, toText)
+import qualified Data.HashMap.Strict as HM
+import Data.Scientific (Scientific, toRealFloat)
+import Data.Maybe (mapMaybe)
 
-type QueryResult = Either String [Value]
+import QueryLiteSQL.Parser.SQL
 
-executeQuery :: SQLQuery -> [Value] -> QueryResult
-executeQuery query data_ = do
-    filtered <- filterData query data_
-    selected <- selectColumns query filtered
-    limited <- applyLimit query selected
-    return limited
+-- Execute an SQL query against JSON data
+executeQuery :: SQLQuery -> [Value] -> Either String Value
+executeQuery query jsonData =
+    case jsonData of
+        [] -> Left "Empty JSON data"
+        (Array arr):_ -> 
+            if V.null arr
+                then Left "Empty JSON array"
+                else Right $ toJSON $ applyLimit query $ applyWhere query $ applySelect query (V.toList arr)
+        _ -> Left "JSON data must be an array"
 
-filterData :: SQLQuery -> [Value] -> QueryResult
-filterData query data_ = case whereClause query of
-    Nothing -> Right data_
-    Just whereClause' -> filterByCondition (conditions whereClause') data_
+-- Apply SELECT clause to filter columns
+applySelect :: SQLQuery -> [Value] -> [Value]
+applySelect query rows =
+    case sqlSelect query of
+        SQLSelectAll -> rows
+        SQLSelectColumns columns -> map (selectColumns columns) rows
 
-filterByCondition :: Condition -> [Value] -> QueryResult
-filterByCondition condition data_ = do
-    filtered <- mapM (evaluateCondition condition) data_
-    return $ [v | (v, True) <- zip data_ filtered]
+-- Select specific columns from a JSON object
+selectColumns :: [Text] -> Value -> Value
+selectColumns columns (Object obj) =
+    let selectedFields = mapMaybe (\col -> (col,) <$> HM.lookup col obj) columns
+    in object $ map (\(k, v) -> k .= v) selectedFields
+selectColumns _ val = val
 
-evaluateCondition :: Condition -> Value -> Either String Bool
-evaluateCondition (And c1 c2) obj = do
-    b1 <- evaluateCondition c1 obj
-    b2 <- evaluateCondition c2 obj
-    return $ b1 && b2
-evaluateCondition (Or c1 c2) obj = do
-    b1 <- evaluateCondition c1 obj
-    b2 <- evaluateCondition c2 obj
-    return $ b1 || b2
-evaluateCondition (BinaryOp col op val) obj = case obj of
-    Object objMap -> do
-        colVal <- case KM.lookup (fromText col) objMap of
-            Just v -> Right v
-            Nothing -> Left $ "Column not found: " ++ show col
-        compareValues op colVal val
-    _ -> Left "Expected object value"
-evaluateCondition (Parens c) obj = evaluateCondition c obj
+-- Apply WHERE clause to filter rows
+applyWhere :: SQLQuery -> [Value] -> [Value]
+applyWhere query rows =
+    case sqlWhere query of
+        NoWhere -> rows
+        SQLWhere condition -> filter (evaluateCondition condition) rows
 
-compareValues :: Op -> Value -> Value -> Either String Bool
-compareValues op v1 v2 = case (v1, v2) of
-    (Number n1, Number n2) -> Right $ case op of
-        Eq -> n1 == n2
-        Neq -> n1 /= n2
-        Lt -> n1 < n2
-        Gt -> n1 > n2
-    (String s1, String s2) -> Right $ case op of
-        Eq -> s1 == s2
-        Neq -> s1 /= s2
-        Lt -> s1 < s2
-        Gt -> s1 > s2
-    (Bool b1, Bool b2) -> Right $ case op of
-        Eq -> b1 == b2
-        Neq -> b1 /= b2
-        _ -> False
-    _ -> Left "Type mismatch in comparison"
+-- Evaluate a condition for a row
+evaluateCondition :: Condition -> Value -> Bool
+evaluateCondition (BinaryCondition column op val) row =
+    case extractValue column row of
+        Just rowVal -> evaluateBinaryOp op val rowVal
+        Nothing -> False
+evaluateCondition (AndCondition c1 c2) row =
+    evaluateCondition c1 row && evaluateCondition c2 row
+evaluateCondition (OrCondition c1 c2) row =
+    evaluateCondition c1 row || evaluateCondition c2 row
+evaluateCondition (Parenthesized c) row =
+    evaluateCondition c row
 
-selectColumns :: SQLQuery -> [Value] -> QueryResult
-selectColumns query data_ = do
-    selected <- mapM (selectRow $ selectCols query) data_
-    return selected
+-- Evaluate a binary operation
+evaluateBinaryOp :: BinaryOp -> Value -> Value -> Bool
+evaluateBinaryOp Equals (StringVal s) (String t) = s == t
+evaluateBinaryOp Equals (NumberVal n) (Number m) = n == (toRealFloat m :: Double)
+evaluateBinaryOp Equals (ColumnRef colRef) row = 
+    case extractValue colRef row of
+        Just val -> evaluateBinaryOp Equals val row
+        Nothing -> False
 
-selectRow :: [Text] -> Value -> Either String Value
-selectRow columns (Object objMap) = do
-    let selected = KM.filterWithKey (\k _ -> toText k `elem` columns) objMap
-    if KM.null selected
-        then Left "No matching columns found"
-        else return $ Object selected
-selectRow _ _ = Left "Expected object value"
+evaluateBinaryOp NotEquals val1 val2 = not (evaluateBinaryOp Equals val1 val2)
 
-applyLimit :: SQLQuery -> [Value] -> QueryResult
-applyLimit query data_ = case limitClause query of
-    Nothing -> Right data_
-    Just limit -> Right $ take limit data_ 
+evaluateBinaryOp LessThan (NumberVal n) (Number m) = n < (toRealFloat m :: Double)
+evaluateBinaryOp LessThan (ColumnRef colRef) row =
+    case extractValue colRef row of
+        Just val -> evaluateBinaryOp LessThan val row
+        Nothing -> False
+evaluateBinaryOp LessThan _ _ = False
+
+evaluateBinaryOp GreaterThan (NumberVal n) (Number m) = n > (toRealFloat m :: Double)
+evaluateBinaryOp GreaterThan (ColumnRef colRef) row =
+    case extractValue colRef row of
+        Just val -> evaluateBinaryOp GreaterThan val row
+        Nothing -> False
+evaluateBinaryOp GreaterThan _ _ = False
+
+-- Extract a value from a JSON object by column name
+extractValue :: Text -> Value -> Maybe Value
+extractValue column (Object obj) = HM.lookup column obj
+extractValue _ _ = Nothing
+
+-- Apply LIMIT clause
+applyLimit :: SQLQuery -> [Value] -> [Value]
+applyLimit query rows =
+    case sqlLimit query of
+        Just n -> take n rows
+        Nothing -> rows 

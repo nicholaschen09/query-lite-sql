@@ -1,83 +1,59 @@
-# Query Lite SQL
+# Query-Lite-SQL
 
-A simple SQL query interface for JSON data with a web interface. This application allows you to query JSON data using SQL-like syntax and provides a web interface for executing queries and viewing query history.
+A lightweight Haskell application that enables SQL querying on flat JSON data.
 
 ## Features
 
-- SQL-like query interface for JSON data
-- Web interface for executing queries
-- Query history tracking
-- Support for basic SQL operations (SELECT, WHERE, LIMIT)
-- Error handling and validation
+- SQL query support (SELECT statements with WHERE and LIMIT)
+- Web interface for submitting queries
+- History of past queries
+- SQLite database for persistence
 
-## Prerequisites
+## Building and Running
 
-- GHC 8.10 or later
-- Cabal 3.0 or later
-- SQLite 3
+### Prerequisites
 
-## Building
+- GHC (Glasgow Haskell Compiler)
+- Cabal
+- Node.js and npm (for the frontend)
 
-1. Clone the repository:
+### Building
+
 ```bash
-git clone https://github.com/yourusername/query-lite-sql.git
-cd query-lite-sql
-```
-
-2. Build the project:
-```bash
+# Build the Haskell backend
 cabal build
+
+# Build the SvelteKit frontend
+cd static
+npm install
+npm run build
 ```
 
-## Running
+### Running
 
-1. Prepare your JSON data file. The file should contain an array of objects with consistent keys and only string/number values.
-
-2. Run the application:
 ```bash
-cabal run query-lite-sql-exe -- path/to/your/data.json
+# Run with a JSON file as input
+cabal run query-lite-sql-exe -- /path/to/data.json
 ```
 
-3. Open your web browser and navigate to `http://localhost:3000`
+The application will be available at http://localhost:3000
 
-## Query Syntax
-
-The application supports a subset of SQL syntax:
+## Supported SQL Syntax
 
 ```sql
-SELECT column1, column2 FROM table WHERE condition LIMIT number;
+SELECT column1, column2, ... FROM table WHERE condition LIMIT n
+SELECT * FROM table WHERE condition
 ```
 
-Supported operations:
-- SELECT: comma-separated list of columns or *
-- FROM: table name
-- WHERE: conditions using =, !=, <, >, AND, OR, and parentheses
-- LIMIT: number of results to return
+Supported conditions:
+- Comparison operators: =, !=, <, >
+- Logical operators: AND, OR
+- Parentheses for grouping
 
-Example queries:
+## Example Queries
+
 ```sql
-SELECT state FROM table WHERE pop > 1000000 AND state != 'California';
-SELECT * FROM table WHERE pop > 1000000000 OR (pop > 1000000 AND region = 'Midwest');
-SELECT * FROM table WHERE pop_male > pop_female;
-```
-
-## Limitations
-
-- No support for GROUP BY, JOIN, or subqueries
-- Only supports string and number values in JSON
-- No support for NULL values
-- No support for nested objects or arrays
-- Column names cannot be SQL reserved keywords
-
-## Error Handling
-
-The application will provide error messages for:
-- Invalid SQL syntax
-- Unknown columns
-- Type mismatches
-- Empty result sets
-- Invalid JSON data
-
-## License
-
-MIT License 
+SELECT state FROM table WHERE pop > 1000000 AND state != 'California'
+SELECT * FROM table WHERE pop > 1000000000 OR (pop > 1000000 AND region = 'Midwest')
+SELECT * FROM table WHERE pop_male > pop_female
+``` 

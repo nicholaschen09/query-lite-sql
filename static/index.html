@@ -9,23 +9,51 @@
 </head>
 
 <body>
-    <div class="container">
-        <h1>Query Lite SQL</h1>
+    <div id="app">
+        <header>
+            <h1>Query Lite SQL</h1>
+            <p>A simple SQL interface for JSON data</p>
+        </header>
 
-        <div class="query-section">
-            <textarea id="queryInput" placeholder="Enter your SQL query here..."></textarea>
-            <button id="executeQuery">Execute Query</button>
-        </div>
+        <main>
+            <div class="query-input">
+                <textarea id="sql-query" placeholder="Enter SQL query here...">SELECT * FROM table LIMIT 10</textarea>
+                <button id="run-query">Run Query</button>
+            </div>
 
-        <div class="result-section">
-            <h2>Query Result</h2>
-            <div id="queryResult"></div>
-        </div>
+            <div class="results">
+                <h2>Results</h2>
+                <div id="error-message" class="error-message"></div>
+                <div id="results-container">
+                    <table id="results-table">
+                        <thead id="results-header"></thead>
+                        <tbody id="results-body"></tbody>
+                    </table>
+                </div>
+            </div>
 
-        <div class="history-section">
-            <h2>Query History</h2>
-            <div id="queryHistory"></div>
-        </div>
+            <div class="history">
+                <h2>Query History</h2>
+                <div id="history-container">
+                    <table id="history-table">
+                        <thead>
+                            <tr>
+                                <th>ID</th>
+                                <th>Query</th>
+                                <th>Result</th>
+                                <th>Time</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="history-body"></tbody>
+                    </table>
+                </div>
+            </div>
+        </main>
+
+        <footer>
+            <p>Query Lite SQL &copy; 2023</p>
+        </footer>
     </div>
 
     <script src="/app.js"></script>

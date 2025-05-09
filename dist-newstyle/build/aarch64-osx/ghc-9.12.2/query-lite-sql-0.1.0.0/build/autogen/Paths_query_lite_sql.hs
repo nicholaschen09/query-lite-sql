@@ -47,7 +47,7 @@ getBinDir, getLibDir, getDynLibDir, getDataDir, getLibexecDir, getSysconfDir :: 
 
 bindir, libdir, dynlibdir, datadir, libexecdir, sysconfdir :: FilePath
 bindir     = "/Users/nicholaschen/.cabal/bin"
-libdir     = "/Users/nicholaschen/.cabal/lib/aarch64-osx-ghc-9.12.2-inplace/query-lite-sql-0.1.0.0-inplace-query-lite-sql-exe"
+libdir     = "/Users/nicholaschen/.cabal/lib/aarch64-osx-ghc-9.12.2-inplace/query-lite-sql-0.1.0.0-inplace"
 dynlibdir  = "/Users/nicholaschen/.cabal/lib/aarch64-osx-ghc-9.12.2-inplace"
 datadir    = "/Users/nicholaschen/.cabal/share/aarch64-osx-ghc-9.12.2-inplace/query-lite-sql-0.1.0.0"
 libexecdir = "/Users/nicholaschen/.cabal/libexec/aarch64-osx-ghc-9.12.2-inplace/query-lite-sql-0.1.0.0"
